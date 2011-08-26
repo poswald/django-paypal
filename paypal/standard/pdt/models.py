@@ -7,7 +7,7 @@ from django.conf import settings
 from django.http import QueryDict
 from django.utils.http import urlencode
 from paypal.standard.models import PayPalStandardBase
-from paypal.standard.conf import POSTBACK_ENDPOINT, SANDBOX_POSTBACK_ENDPOINT
+from paypal.standard.conf import POSTBACK_ENDPOINT, SANDBOX_POSTBACK_ENDPOINT, TEST
 from paypal.standard.pdt.signals import pdt_successful, pdt_failed
 
 # ### Todo: Move this logic to conf.py:
@@ -48,7 +48,7 @@ class PayPalPDT(PayPalStandardBase):
     
     def get_endpoint(self):
         """Use the sandbox when in DEBUG mode as we don't have a test_ipn variable in pdt."""
-        if getattr(settings, 'PAYPAL_DEBUG', settings.DEBUG):
+        if TEST:
             return SANDBOX_POSTBACK_ENDPOINT
         else:
             return POSTBACK_ENDPOINT
