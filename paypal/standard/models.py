@@ -14,6 +14,7 @@ ST_PP_PAID = 'Paid'
 ST_PP_PENDING = 'Pending'
 ST_PP_PROCESSED = 'Processed'
 ST_PP_REFUSED = 'Refused'
+ST_PP_REFUNDED = 'Refunded'
 ST_PP_REVERSED = 'Reversed'
 ST_PP_REWARDED = 'Rewarded'
 ST_PP_UNCLAIMED = 'Unclaimed'
@@ -29,7 +30,7 @@ class PayPalStandardBase(Model):
     # @@@ Might want to add all these one distant day.
     # FLAG_CODE_CHOICES = (
     # PAYMENT_STATUS_CHOICES = "Canceled_ Reversal Completed Denied Expired Failed Pending Processed Refunded Reversed Voided".split()
-    PAYMENT_STATUS_CHOICES = (ST_PP_ACTIVE, ST_PP_CANCELLED, ST_PP_CLEARED, ST_PP_COMPLETED, ST_PP_DENIED, ST_PP_PAID, ST_PP_PENDING, ST_PP_PROCESSED, ST_PP_REFUSED, ST_PP_REVERSED, ST_PP_REWARDED, ST_PP_UNCLAIMED, ST_PP_UNCLEARED)
+    PAYMENT_STATUS_CHOICES = (ST_PP_ACTIVE, ST_PP_CANCELLED, ST_PP_CLEARED, ST_PP_COMPLETED, ST_PP_DENIED, ST_PP_PAID, ST_PP_PENDING, ST_PP_PROCESSED, ST_PP_REFUSED, ST_PP_REFUNDED, ST_PP_REVERSED, ST_PP_REWARDED, ST_PP_UNCLAIMED, ST_PP_UNCLEARED)
     # AUTH_STATUS_CHOICES = "Completed Pending Voided".split()
     # ADDRESS_STATUS_CHOICES = "confirmed unconfirmed".split()
     # PAYER_STATUS_CHOICES = "verified / unverified".split()
@@ -118,7 +119,7 @@ class PayPalStandardBase(Model):
     payment_cycle= models.CharField(max_length=32, blank=True) #Monthly
     period_type = models.CharField(max_length=32, blank=True)
     product_name = models.CharField(max_length=128, blank=True)
-    product_type= models.CharField(max_length=128, blank=True)    
+    product_type = models.CharField(max_length=128, blank=True)
     profile_status = models.CharField(max_length=32, blank=True)
     recurring_payment_id = models.CharField(max_length=128, blank=True)  # I-FA4XVST722B9
     rp_invoice_id= models.CharField(max_length=127, blank=True)  # 1335-7816-2936-1451
@@ -219,7 +220,10 @@ class PayPalStandardBase(Model):
     
     def is_recurring_cancel(self):
         return self.txn_type == "recurring_payment_profile_cancel"
-    
+
+    def is_refund(self):
+        return self.reason_code == "refund" # txn_type is not passed on refunds
+
     def is_recurring_skipped(self):
         return self.txn_type == "recurring_payment_skipped"
     

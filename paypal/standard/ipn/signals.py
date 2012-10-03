@@ -12,6 +12,9 @@ payment_was_successful = Signal()
 # Sent when a payment is flagged.
 payment_was_flagged = Signal()
 
+# Sent when a payment is refunded
+payment_refunded = Signal()
+
 # Sent when a subscription was cancelled.
 subscription_cancel = Signal()
 
@@ -33,5 +36,7 @@ recurring_payment = Signal()
 recurring_cancel = Signal()
 
 recurring_skipped = Signal()
+
+recurring_refunded = Signal()
 
 recurring_failed = Signal()

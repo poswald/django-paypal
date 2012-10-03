@@ -190,7 +190,13 @@ class PayPalWPP(object):
         return nvp_obj
         
     def refundTransaction(self, params):
-        raise NotImplementedError
+        defaults = {"method": "refundTransaction", "refundtype": 'Full'}
+        required = L("transactionid")
+
+        nvp_obj = self._fetch(params, required, defaults)
+        if nvp_obj.flag:
+            raise PayPalFailure(nvp_obj.flag_info)
+        return nvp_obj
 
     def _is_recurring(self, params):
         """Returns True if the item passed is a recurring transaction."""

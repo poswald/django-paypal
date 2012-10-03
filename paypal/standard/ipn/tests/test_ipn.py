@@ -3,11 +3,13 @@ from django.http import HttpResponse
 from django.test import TestCase
 from django.test.client import Client
 
-from paypal.standard.models import ST_PP_CANCELLED
+from paypal.standard.models import ST_PP_CANCELLED, ST_PP_REFUNDED
+
 from paypal.standard.ipn.models import PayPalIPN
-from paypal.standard.ipn.signals import (payment_was_successful, 
+from paypal.standard.ipn.signals import (payment_was_successful,
     payment_was_flagged, recurring_skipped, recurring_failed,
-    recurring_create, recurring_payment, recurring_cancel)
+    recurring_create, recurring_payment, recurring_cancel,
+    recurring_refunded, payment_refunded)
 
 
 IPN_POST_PARAMS = {
@@ -46,7 +48,7 @@ IPN_POST_PARAMS = {
 }
 
 
-class IPNTest(TestCase):    
+class IPNTest(TestCase):
     urls = 'paypal.standard.ipn.tests.test_urls'
 
     def setUp(self):
@@ -57,35 +59,43 @@ class IPNTest(TestCase):
         self.old_postback = PayPalIPN._postback
         PayPalIPN._postback = lambda self: "VERIFIED"
 
-        self.payment_was_successful_receivers = payment_was_successful.receivers  
-        self.payment_was_flagged_receivers = payment_was_flagged.receivers  
-        self.recurring_skipped_receivers = recurring_skipped.receivers  
-        self.recurring_failed_receivers = recurring_failed.receivers  
-        self.recurring_create_receivers = recurring_create.receivers  
-        self.recurring_payment_receivers = recurring_payment.receivers  
-        self.recurring_cancel_receivers = recurring_cancel.receivers  
+        self.payment_was_successful_receivers = payment_was_successful.receivers
+        self.payment_was_flagged_receivers = payment_was_flagged.receivers
+        self.payment_refunded_receivers = payment_refunded.receivers
+
+        self.recurring_skipped_receivers = recurring_skipped.receivers
+        self.recurring_failed_receivers = recurring_failed.receivers
+        self.recurring_create_receivers = recurring_create.receivers
+        self.recurring_payment_receivers = recurring_payment.receivers
+        self.recurring_cancel_receivers = recurring_cancel.receivers
+        self.recurring_refunded_receivers = recurring_refunded.receivers
 
         payment_was_successful.receivers = []
         payment_was_flagged.receivers = []
-        recurring_skipped.receivers = [] 
-        recurring_failed.receivers = []  
-        recurring_create.receivers = [] 
+        payment_refunded.receivers = []
+
+        recurring_skipped.receivers = []
+        recurring_failed.receivers = []
+        recurring_create.receivers = []
         recurring_payment.receivers = []
-        recurring_cancel.receivers = []  
-        
-        
+        recurring_cancel.receivers = []
+        recurring_refunded.receivers = []
+
+
     def tearDown(self):
         settings.DEBUG = self.old_debug
         PayPalIPN._postback = self.old_postback
-        
+
         payment_was_successful.receivers =self.payment_was_successful_receivers
         payment_was_flagged.receivers = self.payment_was_flagged_receivers
+        payment_refunded.receivers = self.payment_refunded_receivers
+
         recurring_skipped.receivers = self.recurring_skipped_receivers
         recurring_failed.receivers = self.recurring_failed_receivers
         recurring_create.receivers = self.recurring_create_receivers
         recurring_payment.receivers = self.recurring_payment_receivers
-        recurring_cancel.receivers = self.recurring_cancel_receivers  
-        
+        recurring_cancel.receivers = self.recurring_cancel_receivers
+
 
     def assertGotSignal(self, signal, flagged, params=IPN_POST_PARAMS):
         # Check the signal was sent. These get lost if they don't reference self.
@@ -197,10 +207,10 @@ class IPNTest(TestCase):
 
     def test_recurring_payment_ipn(self):
         """
-        The wat the code is written in 
-        PayPalIPN.send_signals the recurring_payment 
+        The way the code is written in
+        PayPalIPN.send_signals the recurring_payment
         will never be sent because the paypal ipn
-        contains a txn_id, if this test failes you
+        contains a txn_id, if this test fails you
         might break some compatibility
         """
         update = {
@@ -223,3 +233,30 @@ class IPNTest(TestCase):
         ipns = PayPalIPN.objects.all()
         self.assertEqual(len(ipns), 1)        
         self.assertFalse(self.got_signal)
+
+
+    def test_refund_for_recurring_payment(self):
+        update = {
+            "payment_status": ST_PP_REFUNDED,
+            "reason_code": "refund",
+            "parent_txn_id": "1NK420530S625752Y",
+            "recurring_payment_id": "I-N8KNB3KKD9NF"
+        }
+        params = IPN_POST_PARAMS.copy()
+        params.update(update)
+
+        self.assertGotSignal(recurring_refunded, False, params)
+
+
+    def test_refund_for_non_recurring_payment(self):
+        update = {
+            "payment_status": ST_PP_REFUNDED,
+            "reason_code": "refund",
+            "parent_txn_id": "1NK420530S625752Y"
+        }
+        params = IPN_POST_PARAMS.copy()
+        params.update(update)
+
+        self.assertGotSignal(payment_refunded, False, params)
+
+
