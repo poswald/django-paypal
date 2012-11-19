@@ -9,7 +9,7 @@ from paypal.standard.ipn.models import PayPalIPN
 from paypal.standard.ipn.signals import (payment_was_successful,
     payment_was_flagged, recurring_skipped, recurring_failed,
     recurring_create, recurring_payment, recurring_cancel,
-    recurring_refunded, payment_refunded)
+    recurring_refunded, payment_refunded, subscription_failed)
 
 
 IPN_POST_PARAMS = {
@@ -101,22 +101,22 @@ class IPNTest(TestCase):
         # Check the signal was sent. These get lost if they don't reference self.
         self.got_signal = False
         self.signal_obj = None
-        
+
         def handle_signal(sender, **kwargs):
             self.got_signal = True
             self.signal_obj = sender
         signal.connect(handle_signal)
-        
+
         response = self.client.post("/ipn/", params)
         self.assertEqual(response.status_code, 200)
         ipns = PayPalIPN.objects.all()
-        self.assertEqual(len(ipns), 1)        
-        ipn_obj = ipns[0]        
+        self.assertEqual(len(ipns), 1)
+        ipn_obj = ipns[0]
         self.assertEqual(ipn_obj.flag, flagged)
-        
+
         self.assertTrue(self.got_signal)
         self.assertEqual(self.signal_obj, ipn_obj)
-        
+
     def test_correct_ipn(self):
         self.assertGotSignal(payment_was_successful, False)
 
@@ -142,7 +142,7 @@ class IPNTest(TestCase):
         update = {"payment_status": "Failed"}
         flag_info = u"Invalid payment_status. (Failed)"
         self.assertFlagged(update, flag_info)
-        
+
     def test_vaid_payment_status_cancelled(self):
         update = {"payment_status": ST_PP_CANCELLED}
         params = IPN_POST_PARAMS.copy()
@@ -151,12 +151,12 @@ class IPNTest(TestCase):
         self.assertEqual(response.status_code, 200)
         ipn_obj = PayPalIPN.objects.all()[0]
         self.assertEqual(ipn_obj.flag, False)
-        
 
-    def test_duplicate_txn_id(self):       
+
+    def test_duplicate_txn_id(self):
         self.client.post("/ipn/", IPN_POST_PARAMS)
         self.client.post("/ipn/", IPN_POST_PARAMS)
-        self.assertEqual(len(PayPalIPN.objects.all()), 2)        
+        self.assertEqual(len(PayPalIPN.objects.all()), 2)
         ipn_obj = PayPalIPN.objects.order_by('-created_at', '-pk')[0]
         self.assertEqual(ipn_obj.flag, True)
         self.assertEqual(ipn_obj.flag_info, "Duplicate txn_id. (51403485VH153354B)")
@@ -169,7 +169,7 @@ class IPNTest(TestCase):
         }
         params = IPN_POST_PARAMS.copy()
         params.update(update)
-        
+
         self.assertGotSignal(recurring_skipped, False, params)
 
     def test_recurring_payment_failed_ipn(self):
@@ -180,7 +180,7 @@ class IPNTest(TestCase):
         }
         params = IPN_POST_PARAMS.copy()
         params.update(update)
-        
+
         self.assertGotSignal(recurring_failed, False, params)
 
     def test_recurring_payment_create_ipn(self):
@@ -191,7 +191,7 @@ class IPNTest(TestCase):
         }
         params = IPN_POST_PARAMS.copy()
         params.update(update)
-        
+
         self.assertGotSignal(recurring_create, False, params)
 
     def test_recurring_payment_cancel_ipn(self):
@@ -202,7 +202,7 @@ class IPNTest(TestCase):
         }
         params = IPN_POST_PARAMS.copy()
         params.update(update)
-        
+
         self.assertGotSignal(recurring_cancel, False, params)
 
     def test_recurring_payment_ipn(self):
@@ -219,19 +219,19 @@ class IPNTest(TestCase):
         }
         params = IPN_POST_PARAMS.copy()
         params.update(update)
-        
+
         self.got_signal = False
         self.signal_obj = None
-        
+
         def handle_signal(sender, **kwargs):
             self.got_signal = True
             self.signal_obj = sender
         recurring_payment.connect(handle_signal)
-        
+
         response = self.client.post("/ipn/", params)
         self.assertEqual(response.status_code, 200)
         ipns = PayPalIPN.objects.all()
-        self.assertEqual(len(ipns), 1)        
+        self.assertEqual(len(ipns), 1)
         self.assertFalse(self.got_signal)
 
 
@@ -258,5 +258,17 @@ class IPNTest(TestCase):
         params.update(update)
 
         self.assertGotSignal(payment_refunded, False, params)
+
+
+    def test_subscr_failed_ipn(self):
+        update = {
+            "recurring_payment_id": "BN5JZ2V7MLEV4",
+            "txn_type": "subscr_failed",
+            "txn_id": ""
+        }
+        params = IPN_POST_PARAMS.copy()
+        params.update(update)
+
+        self.assertGotSignal(subscription_failed, False, params)
 
 

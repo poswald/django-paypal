@@ -212,6 +212,10 @@ class PayPalStandardBase(Model):
     def is_subscription_signup(self):
         return self.txn_type == "subscr_signup"
 
+    def is_subscription_failed(self):
+        # Note this just means the subscription payment failed. Paypal may retry.
+        return self.txn_type == "subscr_failed"
+
     def is_recurring_create(self):
         return self.txn_type == "recurring_payment_profile_created"
 

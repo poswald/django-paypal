@@ -5,7 +5,7 @@ Django PayPal
 About
 -----
 
-Django PayPal is a pluggable application that implements with PayPal Payments 
+Django PayPal is a pluggable application that implements with PayPal Payments
 Standard and Payments Pro.
 
 Before diving in, a quick review of PayPal's payment methods is in order! [PayPal Payments Standard](https://cms.paypal.com/cms_content/US/en_US/files/developer/PP_WebsitePaymentsStandard_IntegrationGuide.pdf) is the "Buy it Now" buttons you may have
@@ -23,7 +23,7 @@ Using PayPal Payments Standard IPN:
 
         git clone git://github.com/johnboxall/django-paypal.git paypal
 
-1. Edit `settings.py` and add  `paypal.standard.ipn` to your `INSTALLED_APPS` 
+1. Edit `settings.py` and add  `paypal.standard.ipn` to your `INSTALLED_APPS`
    and `PAYPAL_RECEIVER_EMAIL`:
 
         # settings.py
@@ -32,16 +32,16 @@ Using PayPal Payments Standard IPN:
         ...
         PAYPAL_RECEIVER_EMAIL = "yourpaypalemail@example.com"
 
-1.  Create an instance of the `PayPalPaymentsForm` in the view where you would 
-    like to collect money. Call `render` on the instance in your template to 
+1.  Create an instance of the `PayPalPaymentsForm` in the view where you would
+    like to collect money. Call `render` on the instance in your template to
     write out the HTML.
 
         # views.py
         ...
         from paypal.standard.forms import PayPalPaymentsForm
-        
+
         def view_that_asks_for_money(request):
-        
+
             # What you want the button to do.
             paypal_dict = {
                 "business": "yourpaypalemail@example.com",
@@ -51,24 +51,24 @@ Using PayPal Payments Standard IPN:
                 "notify_url": "http://www.example.com/your-ipn-location/",
                 "return_url": "http://www.example.com/your-return-location/",
                 "cancel_return": "http://www.example.com/your-cancel-location/",
-            
+
             }
-            
+
             # Create the instance.
             form = PayPalPaymentsForm(initial=paypal_dict)
             context = {"form": form}
             return render_to_response("payment.html", context)
-            
-            
+
+
         <!-- payment.html -->
         ...
         <h1>Show me the money!</h1>
         <!-- writes out the form tag automatically -->
         {{ form.render }}
 
-1.  When someone uses this button to buy something PayPal makes a HTTP POST to 
-    your "notify_url". PayPal calls this Instant Payment Notification (IPN). 
-    The view `paypal.standard.ipn.views.ipn` handles IPN processing. To set the 
+1.  When someone uses this button to buy something PayPal makes a HTTP POST to
+    your "notify_url". PayPal calls this Instant Payment Notification (IPN).
+    The view `paypal.standard.ipn.views.ipn` handles IPN processing. To set the
     correct `notify_url` add the following to your `urls.py`:
 
         # urls.py
@@ -77,19 +77,20 @@ Using PayPal Payments Standard IPN:
             (r'^something/hard/to/guess/', include('paypal.standard.ipn.urls')),
         )
 
-1.  Whenever an IPN is processed a signal will be sent with the result of the 
+1.  Whenever an IPN is processed a signal will be sent with the result of the
     transaction. Connect the signals to actions to perform the needed operations
     when a successful payment is recieved.
-    
+
     There are two signals for basic transactions:
-    - `payment_was_successful` 
+    - `payment_was_successful`
     - `payment_was_flagged`
-    
-    And four signals for subscriptions:
+
+    And five signals for subscriptions:
     - `subscription_cancel` - Sent when a subscription is cancelled.
     - `subscription_eot` - Sent when a subscription expires.
     - `subscription_modify` - Sent when a subscription is modified.
     - `subscription_signup` - Sent when a subscription is created.
+    - `subscription_failed` - Sent when a subscription payment fails. Paypal may still retry it.
 
     Several more exist for recurring payments:
     - `recurring_create` - Sent when a recurring payment is created.
@@ -103,15 +104,15 @@ Using PayPal Payments Standard IPN:
         # models.py
         ...
         from paypal.standard.ipn.signals import payment_was_successful
-        
+
         def show_me_the_money(sender, **kwargs):
             ipn_obj = sender
             # Undertake some action depending upon `ipn_obj`.
             if ipn_obj.custom == "Upgrade all users!":
-                Users.objects.update(paid=True)        
+                Users.objects.update(paid=True)
         payment_was_successful.connect(show_me_the_money)
-        
-        
+
+
 Using PayPal Payments Standard PDT:
 -----------------------------------
 
@@ -126,13 +127,13 @@ Paypal Payment Data Transfer (PDT) allows you to display transaction details to 
         # settings.py
         ...
         INSTALLED_APPS = (... 'paypal.standard.pdt', ...)
-        
+
         PAYPAL_IDENTITY_TOKEN = "xxx"
 
 1.  Create a view that uses `PayPalPaymentsForm` just like in PayPal IPN.
 
-1.  After someone uses this button to buy something PayPal will return the user to your site at 
-    your "return_url" with some extra GET parameters. PayPal calls this Payment Data Transfer (PDT). 
+1.  After someone uses this button to buy something PayPal will return the user to your site at
+    your "return_url" with some extra GET parameters. PayPal calls this Payment Data Transfer (PDT).
     The view `paypal.standard.pdt.views.pdt` handles PDT processing. to specify the correct
      `return_url` add the following to your `urls.py`:
 
@@ -146,7 +147,7 @@ Paypal Payment Data Transfer (PDT) allows you to display transaction details to 
 Using PayPal Payments Standard with Subscriptions:
 --------------------------------------------------
 
-1.  For subscription actions, you'll need to add a parameter to tell it to use the subscription buttons and the command, plus any 
+1.  For subscription actions, you'll need to add a parameter to tell it to use the subscription buttons and the command, plus any
     subscription-specific settings:
 
         # views.py
@@ -154,7 +155,7 @@ Using PayPal Payments Standard with Subscriptions:
         paypal_dict = {
             "cmd": "_xclick-subscriptions",
             "business": "your_account@paypal",
-            "a3": "9.99",                      # monthly price 
+            "a3": "9.99",                      # monthly price
             "p3": 1,                           # duration of each unit (depends on unit)
             "t3": "M",                         # duration unit ("M for Month")
             "src": "1",                        # make payments recur
@@ -168,7 +169,7 @@ Using PayPal Payments Standard with Subscriptions:
 
         # Create the instance.
         form = PayPalPaymentsForm(initial=paypal_dict, button_type="subscribe")
-        
+
         # Output the button.
         form.render()
 
@@ -181,7 +182,7 @@ Use this method to encrypt your button so sneaky gits don't try to hack it. Than
 1. Encrypted buttons require the `M2Crypto` library:
 
         easy_install M2Crypto
-    
+
 
 1. Encrypted buttons require certificates. Create a private key:
 
@@ -192,7 +193,7 @@ Use this method to encrypt your button so sneaky gits don't try to hack it. Than
         openssl req -new -key paypal.pem -x509 -days 365 -out pubpaypal.pem
 
 1. Upload your public key to the paypal website (sandbox or live).
-        
+
     [https://www.paypal.com/us/cgi-bin/webscr?cmd=_profile-website-cert](https://www.paypal.com/us/cgi-bin/webscr?cmd=_profile-website-cert)
 
     [https://www.paypal.com/us/cgi-bin/webscr?cmd=_profile-website-cert](https://www.sandbox.paypal.com/us/cgi-bin/webscr?cmd=_profile-website-cert)
@@ -214,7 +215,7 @@ Use this method to encrypt your button so sneaky gits don't try to hack it. Than
 
         # views.py
         from paypal.standard.forms import PayPalEncryptedPaymentsForm
-        
+
         def view_that_asks_for_money(request):
             ...
             # Create the instance.
@@ -229,42 +230,42 @@ Using PayPal Payments Standard with Encrypted Buttons and Shared Secrets:
 This method uses Shared secrets instead of IPN postback to verify that transactions
 are legit. PayPal recommends you should use Shared Secrets if:
 
-    * You are not using a shared website hosting service. 
-    * You have enabled SSL on your web server. 
-    * You are using Encrypted Website Payments. 
+    * You are not using a shared website hosting service.
+    * You have enabled SSL on your web server.
+    * You are using Encrypted Website Payments.
     * You use the notify_url variable on each individual payment transaction.
-    
-Use postbacks for validation if: 
-    * You rely on a shared website hosting service 
-    * You do not have SSL enabled on your web server 
+
+Use postbacks for validation if:
+    * You rely on a shared website hosting service
+    * You do not have SSL enabled on your web server
 
 1. Swap out your button for a `PayPalSharedSecretEncryptedPaymentsForm`:
 
         # views.py
         from paypal.standard.forms import PayPalSharedSecretEncryptedPaymentsForm
-        
+
         def view_that_asks_for_money(request):
             ...
             # Create the instance.
             form = PayPalSharedSecretEncryptedPaymentsForm(initial=paypal_dict)
             # Works just like before!
             form.render()
-            
+
 1. Verify that your IPN endpoint is running on SSL - `request.is_secure()` should return `True`!
 
 
 Using PayPal Payments Pro (WPP)
 -------------------------------
 
-WPP is the more awesome version of PayPal that lets you accept payments on your 
-site. WPP reuses code from `paypal.standard` so you'll need to include both 
+WPP is the more awesome version of PayPal that lets you accept payments on your
+site. WPP reuses code from `paypal.standard` so you'll need to include both
 apps.
 
 1. Obtain PayPal Pro API credentials: login to PayPal, click *My Account*,
   *Profile*, *Request API credentials*, *Set up PayPal API credentials and
   permissions*, *View API Signature*.
 
-2. Edit `settings.py` and add  `paypal.standard` and `paypal.pro` to your 
+2. Edit `settings.py` and add  `paypal.standard` and `paypal.pro` to your
    `INSTALLED_APPS` and put in your PayPal Pro API credentials.
 
         # settings.py
@@ -288,18 +289,18 @@ apps.
                   "custom": "tracking",       # custom tracking variable for you
                   "cancelurl": "http://...",  # Express checkout cancel url
                   "returnurl": "http://..."}  # Express checkout return url
-        
+
           kw = {"item": item,                            # what you're selling
                 "payment_template": "payment.html",      # template name for payment
                 "confirm_template": "confirmation.html", # template name for confirmation
                 "success_url": "/success/"}              # redirect location after success
-                
+
           ppp = PayPalPro(**kw)
           return ppp(request)
 
 
-5. Create templates for payment and confirmation. By default both templates are 
-   populated with the context variable `form` which contains either a 
+5. Create templates for payment and confirmation. By default both templates are
+   populated with the context variable `form` which contains either a
    `PaymentForm` or a `Confirmation` form.
 
         <!-- payment.html -->
@@ -308,7 +309,7 @@ apps.
           {{ form }}
           <input type="submit" value="Pay Up">
         </form>
-        
+
         <!-- confirmation.html -->
         <h1>Are you sure you want to buy this thing?</h1>
         <form method="post" action="">
@@ -316,7 +317,7 @@ apps.
           <input type="submit" value="Yes I Yams">
         </form>
 
-6. Add your view to `urls.py`, and add the IPN endpoint to receive callbacks 
+6. Add your view to `urls.py`, and add the IPN endpoint to receive callbacks
    from PayPal:
 
         # urls.py
@@ -328,7 +329,7 @@ apps.
         )
 
 7. Connect to the provided signals and have them do something useful:
-    - `payment_was_successful` 
+    - `payment_was_successful`
     - `payment_was_flagged`
 
 
