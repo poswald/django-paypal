@@ -24,7 +24,7 @@ class PayPalIPN(PayPalStandardBase):
     def send_signals(self):
         """Shout for the world to hear whether a txn was successful."""
         # Transaction signals:
-        if self.is_transaction() and not self.is_recurring():
+        if self.is_transaction() and not self.is_recurring() and not self.is_subscription():
             if self.flag:
                 payment_was_flagged.send(sender=self)
             elif self.is_refund():
@@ -32,7 +32,6 @@ class PayPalIPN(PayPalStandardBase):
             else:
                 payment_was_successful.send(sender=self)
         # Recurring payment signals:
-        # XXX: Should these be merged with subscriptions?
         elif self.is_recurring():
             if self.is_recurring_create():
                 recurring_create.send(sender=self)
