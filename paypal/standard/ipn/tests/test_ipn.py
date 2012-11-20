@@ -1,15 +1,15 @@
+# -*- coding: utf-8 -*-
 from django.conf import settings
-from django.http import HttpResponse
 from django.test import TestCase
-from django.test.client import Client
 
-from paypal.standard.models import ST_PP_CANCELLED, ST_PP_REFUNDED
+from paypal.standard.models import ST_PP_CANCELLED, ST_PP_REFUNDED, ST_PP_COMPLETED
 
 from paypal.standard.ipn.models import PayPalIPN
 from paypal.standard.ipn.signals import (payment_was_successful,
     payment_was_flagged, recurring_skipped, recurring_failed,
     recurring_create, recurring_payment, recurring_cancel,
-    recurring_refunded, payment_refunded, subscription_failed)
+    recurring_refunded, payment_refunded, subscription_failed, subscription_eot,
+    subscription_signup, subscription_cancel)
 
 
 IPN_POST_PARAMS = {
@@ -17,7 +17,7 @@ IPN_POST_PARAMS = {
     "last_name": "User",
     "txn_id": "51403485VH153354B",
     "receiver_email": settings.PAYPAL_RECEIVER_EMAIL,
-    "payment_status": "Completed",
+    "payment_status": ST_PP_COMPLETED,
     "payment_gross": "10.00",
     "tax": "0.00",
     "residence_country": "US",
@@ -48,6 +48,105 @@ IPN_POST_PARAMS = {
 }
 
 
+IPN_SUBSCR_FAILED_PARAMS = {
+    "business": "abc",
+    "charset": "UTF-8",
+    "custom": "1,2,3,4",
+    "first_name": "Name",
+    "ipn_track_id": "a5u81abcd1234",
+    "item_name": "Item Name",
+    "item_number": "itemname",
+    "last_name": "Smith",
+    "mc_currency": "JPY",
+    "mc_gross": "999",
+    "notify_version": "3.7",
+    "payer_business_name": "Biz Name",
+    "payer_email": "payer@example.com",
+    "payer_id": "YXNBI1GQZPV6M",
+    "payer_status": "verified",
+    "payment_gross": "",
+    "receiver_email": settings.PAYPAL_RECEIVER_EMAIL,
+    "residence_country": "JP",
+    "retry_at": "02:00:00 Nov 24, 2012 PST",
+    "subscr_id": "I-1EM1WEKXTL1G",
+    "txn_type": "subscr_failed",
+    "verify_sign": "",
+}
+
+IPN_SUBSCR_SIGNUP_PARAMS = {
+    "business": "abc",
+    "charset": "UTF-8",
+    "custom": "1,2,3,4",
+    "first_name": u"Jøhn",
+    "ipn_track_id": "a5u81abcd1234",
+    "item_name": "monthly widgets",
+    "item_number": "1234",
+    "last_name": "Smith",
+    "mc_amount3": "999",
+    "mc_currency": "JPY",
+    "notify_version": "3.7",
+    "payer_email": "payer@example.com",
+    "payer_id": "YXNBI1GQZPV6M",
+    "payer_status": "verified",
+    "period3": "1+M",
+    "reattempt": "1",
+    "receiver_email": settings.PAYPAL_RECEIVER_EMAIL,
+    "recurring": "1",
+    "residence_country": "JP",
+    "subscr_date": "05:11:33 Nov 16, 2012 PST",
+    "subscr_id": "I-1EM1WEKXTL1G",
+    "txn_type": "subscr_signup",
+    "verify_sign": "",
+}
+
+IPN_SUBSCR_EOT_PARAMS = {
+    "business": u"business@example.com",
+    "charset": u"UTF-8",
+    "custom": u"1,2,3,4",
+    "first_name": u"Jøhn",
+    "ipn_track_id": u"a5u81abcd1234",
+    "item_name": u"monthly widgets",
+    "item_number": u"1234",
+    "last_name": u"Smith",
+    "mc_currency": u"JPY",
+    "notify_version": u"3.7",
+    "payer_email": u"payer@example.com",
+    "payer_id": u"YXNBI1GQZPV6M",
+    "payer_status": u"verified",
+    "receiver_email": settings.PAYPAL_RECEIVER_EMAIL,
+    "residence_country": u"JP",
+    "subscr_id": u"I-1EM1WEKXTL1G",
+    "txn_type": u"subscr_eot",
+    "verify_sign": u"",
+}
+
+
+IPN_SUBSCR_CANCEL_PARAMS = {
+    "business": u"business@example.com",
+    "charset": u"UTF-8",
+    "custom": u"1,2,3,4",
+    "first_name": u"Jøhn",
+    "ipn_track_id": u"a5u81abcd1234",
+    "item_name": u"monthly widgets",
+    "item_number": u"1234",
+    "last_name": u"Smith",
+    "mc_amount3": u"3000",
+    "mc_currency": u"JPY",
+    "notify_version": u"3.7",
+    "payer_email": u"payer@example.com",
+    "payer_id": u"YXNBI1GQZPV6M",
+    "payer_status": u"verified",
+    "period3": u"1+M",
+    "reattempt": u"1",
+    "receiver_email": settings.PAYPAL_RECEIVER_EMAIL,
+    "recurring": u"1",
+    "residence_country": u"JP",
+    "subscr_date": u"21:05:00 Sep 27, 2012 PDT",
+    "subscr_id": u"I-1EM1WEKXTL1G",
+    "txn_type": u"subscr_cancel",
+    "verify_sign": u"",
+}
+
 class IPNTest(TestCase):
     urls = 'paypal.standard.ipn.tests.test_urls'
 
@@ -70,6 +169,11 @@ class IPNTest(TestCase):
         self.recurring_cancel_receivers = recurring_cancel.receivers
         self.recurring_refunded_receivers = recurring_refunded.receivers
 
+        self.subscription_signup_receivers = subscription_signup.receivers
+        self.subscription_failed_receivers = subscription_failed.receivers
+        self.subscription_eot_receivers = subscription_eot.receivers
+        self.subscription_cancel_receivers = subscription_cancel.receivers
+
         payment_was_successful.receivers = []
         payment_was_flagged.receivers = []
         payment_refunded.receivers = []
@@ -80,6 +184,11 @@ class IPNTest(TestCase):
         recurring_payment.receivers = []
         recurring_cancel.receivers = []
         recurring_refunded.receivers = []
+
+        subscription_signup.receivers = []
+        subscription_failed.receivers = []
+        subscription_eot.receivers = []
+        subscription_cancel.receivers = []
 
 
     def tearDown(self):
@@ -95,6 +204,11 @@ class IPNTest(TestCase):
         recurring_create.receivers = self.recurring_create_receivers
         recurring_payment.receivers = self.recurring_payment_receivers
         recurring_cancel.receivers = self.recurring_cancel_receivers
+
+        subscription_signup.receivers = self.subscription_signup_receivers
+        subscription_failed.receivers = self.subscription_failed_receivers
+        subscription_eot.receivers = self.subscription_eot_receivers
+        subscription_cancel.receivers = self.subscription_cancel_receivers
 
 
     def assertGotSignal(self, signal, flagged, params=IPN_POST_PARAMS):
@@ -260,15 +374,21 @@ class IPNTest(TestCase):
         self.assertGotSignal(payment_refunded, False, params)
 
 
-    def test_subscr_failed_ipn(self):
-        update = {
-            "recurring_payment_id": "BN5JZ2V7MLEV4",
-            "txn_type": "subscr_failed",
-            "txn_id": ""
-        }
-        params = IPN_POST_PARAMS.copy()
-        params.update(update)
+    # Subscription Tests
 
+    def test_subscr_signup_ipn(self):
+        params = IPN_SUBSCR_SIGNUP_PARAMS.copy()
+        self.assertGotSignal(subscription_signup, False, params)
+
+    def test_subscr_eot_ipn(self):
+        params = IPN_SUBSCR_EOT_PARAMS.copy()
+        self.assertGotSignal(subscription_eot, False, params)
+
+    def test_subscr_failed_ipn(self):
+        params = IPN_SUBSCR_FAILED_PARAMS.copy()
         self.assertGotSignal(subscription_failed, False, params)
 
+    def test_subscr_cancel_ipn(self):
+        params = IPN_SUBSCR_CANCEL_PARAMS.copy()
+        self.assertGotSignal(subscription_cancel, False, params)
 
