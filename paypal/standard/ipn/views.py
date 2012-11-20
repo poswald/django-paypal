@@ -26,7 +26,7 @@ def ipn(request, item_check_callable=None):
     # Clean up the data as PayPal sends some weird values such as "N/A"
     data = request.POST.copy()
     date_fields = ('time_created', 'payment_date', 'next_payment_date',
-                   'subscr_date', 'subscr_effective')
+                   'subscr_date', 'subscr_effective', 'retry_at')
     for date_field in date_fields:
         if data.get(date_field) == 'N/A':
             del data[date_field]

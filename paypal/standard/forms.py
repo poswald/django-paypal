@@ -9,13 +9,15 @@ from paypal.standard.conf import (POSTBACK_ENDPOINT, SANDBOX_POSTBACK_ENDPOINT,
     RECEIVER_EMAIL, TEST)
 
 
-# 20:18:05 Jan 30, 2009 PST - PST timezone support is not included out of the box.
-# PAYPAL_DATE_FORMAT = ("%H:%M:%S %b. %d, %Y PST", "%H:%M:%S %b %d, %Y PST",)
 # PayPal dates have been spotted in the wild with these formats, beware!
-PAYPAL_DATE_FORMAT = ("%H:%M:%S %b. %d, %Y PST",
-                      "%H:%M:%S %b. %d, %Y PDT",
-                      "%H:%M:%S %b %d, %Y PST",
-                      "%H:%M:%S %b %d, %Y PDT",)
+# Input formats use python string formatting:
+# http://docs.python.org/2/library/datetime.html#strftime-strptime-behavior
+PAYPAL_DATE_FORMAT = (
+    "%H:%M:%S %b. %d, %Y PST", # 20:18:05 Jan. 30, 2009 PST
+    "%H:%M:%S %b. %d, %Y PDT", # 20:18:05 Jan. 30, 2009 PDT
+    "%H:%M:%S %b %d, %Y PST",  # 20:18:05 Jan 30, 2009 PST
+    "%H:%M:%S %b %d, %Y PDT",  # 20:18:05 Jan 30, 2009 PDT
+    )
 
 class PayPalPaymentsForm(forms.Form):
     """
@@ -214,3 +216,4 @@ class PayPalStandardBaseForm(forms.ModelForm):
     next_payment_date = forms.DateTimeField(required=False, input_formats=PAYPAL_DATE_FORMAT)
     subscr_date = forms.DateTimeField(required=False, input_formats=PAYPAL_DATE_FORMAT)
     subscr_effective = forms.DateTimeField(required=False, input_formats=PAYPAL_DATE_FORMAT)
+    retry_at = forms.DateTimeField(required=False, input_formats=PAYPAL_DATE_FORMAT)
