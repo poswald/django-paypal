@@ -1,4 +1,7 @@
 # -*- coding: utf-8 -*-
+
+import urllib
+
 from django.conf import settings
 from django.test import TestCase
 
@@ -11,6 +14,9 @@ from paypal.standard.ipn.signals import (payment_was_successful,
     recurring_refunded, payment_refunded, subscription_failed, subscription_eot,
     subscription_signup, subscription_cancel)
 
+
+# Parameters are all bytestrings, so we can construct a bytestring
+# request the same way that Paypal does.
 
 IPN_POST_PARAMS = {
     "protection_eligibility": "Ineligible",
@@ -26,7 +32,7 @@ IPN_POST_PARAMS = {
     "txn_type": "express_checkout",
     "handling_amount": "0.00",
     "payment_date": "23:04:06 Feb 02, 2009 PST",
-    "first_name": "Test",
+    "first_name": "J\xF6rg",
     "item_name": "",
     "charset": "windows-1252",
     "custom": "website_id=13&user_id=21",
@@ -52,7 +58,7 @@ IPN_SUBSCR_FAILED_PARAMS = {
     "business": "abc",
     "charset": "UTF-8",
     "custom": "1,2,3,4",
-    "first_name": "Name",
+    "first_name": "J\xF6rg",
     "ipn_track_id": "a5u81abcd1234",
     "item_name": "Item Name",
     "item_number": "itemname",
@@ -77,7 +83,7 @@ IPN_SUBSCR_SIGNUP_PARAMS = {
     "business": "abc",
     "charset": "UTF-8",
     "custom": "1,2,3,4",
-    "first_name": u"Jøhn",
+    "first_name": "J\xF6rg",
     "ipn_track_id": "a5u81abcd1234",
     "item_name": "monthly widgets",
     "item_number": "1234",
@@ -100,51 +106,51 @@ IPN_SUBSCR_SIGNUP_PARAMS = {
 }
 
 IPN_SUBSCR_EOT_PARAMS = {
-    "business": u"business@example.com",
-    "charset": u"UTF-8",
-    "custom": u"1,2,3,4",
-    "first_name": u"Jøhn",
-    "ipn_track_id": u"a5u81abcd1234",
-    "item_name": u"monthly widgets",
-    "item_number": u"1234",
-    "last_name": u"Smith",
-    "mc_currency": u"JPY",
-    "notify_version": u"3.7",
-    "payer_email": u"payer@example.com",
-    "payer_id": u"YXNBI1GQZPV6M",
-    "payer_status": u"verified",
+    "business": "business@example.com",
+    "charset": "UTF-8",
+    "custom": "1,2,3,4",
+    "first_name": "J\xF6rg",
+    "ipn_track_id": "a5u81abcd1234",
+    "item_name": "monthly widgets",
+    "item_number": "1234",
+    "last_name": "Smith",
+    "mc_currency": "JPY",
+    "notify_version": "3.7",
+    "payer_email": "payer@example.com",
+    "payer_id": "YXNBI1GQZPV6M",
+    "payer_status": "verified",
     "receiver_email": settings.PAYPAL_RECEIVER_EMAIL,
-    "residence_country": u"JP",
-    "subscr_id": u"I-1EM1WEKXTL1G",
-    "txn_type": u"subscr_eot",
-    "verify_sign": u"",
+    "residence_country": "JP",
+    "subscr_id": "I-1EM1WEKXTL1G",
+    "txn_type": "subscr_eot",
+    "verify_sign": "",
 }
 
 
 IPN_SUBSCR_CANCEL_PARAMS = {
-    "business": u"business@example.com",
-    "charset": u"UTF-8",
-    "custom": u"1,2,3,4",
-    "first_name": u"Jøhn",
-    "ipn_track_id": u"a5u81abcd1234",
-    "item_name": u"monthly widgets",
-    "item_number": u"1234",
-    "last_name": u"Smith",
-    "mc_amount3": u"3000",
-    "mc_currency": u"JPY",
-    "notify_version": u"3.7",
-    "payer_email": u"payer@example.com",
-    "payer_id": u"YXNBI1GQZPV6M",
-    "payer_status": u"verified",
-    "period3": u"1+M",
-    "reattempt": u"1",
+    "business": "business@example.com",
+    "charset": "UTF-8",
+    "custom": "1,2,3,4",
+    "first_name": "J\xF6rg",
+    "ipn_track_id": "a5u81abcd1234",
+    "item_name": "monthly widgets",
+    "item_number": "1234",
+    "last_name": "Smith",
+    "mc_amount3": "3000",
+    "mc_currency": "JPY",
+    "notify_version": "3.7",
+    "payer_email": "payer@example.com",
+    "payer_id": "YXNBI1GQZPV6M",
+    "payer_status": "verified",
+    "period3": "1+M",
+    "reattempt": "1",
     "receiver_email": settings.PAYPAL_RECEIVER_EMAIL,
-    "recurring": u"1",
-    "residence_country": u"JP",
-    "subscr_date": u"21:05:00 Sep 27, 2012 PDT",
-    "subscr_id": u"I-1EM1WEKXTL1G",
-    "txn_type": u"subscr_cancel",
-    "verify_sign": u"",
+    "recurring": "1",
+    "residence_country": "JP",
+    "subscr_date": "21:05:00 Sep 27, 2012 PDT",
+    "subscr_id": "I-1EM1WEKXTL1G",
+    "txn_type": "subscr_cancel",
+    "verify_sign": "",
 }
 
 class IPNTest(TestCase):
@@ -211,6 +217,16 @@ class IPNTest(TestCase):
         subscription_cancel.receivers = self.subscription_cancel_receivers
 
 
+    def paypal_post(self, params):
+        """
+        Does an HTTP POST the way that PayPal does, using the params given.
+        """
+        # We build params into a bytestring ourselves, to avoid some encoding
+        # processing that is done by the test client.
+        post_data = urllib.urlencode(params)
+        return self.client.post("/ipn/", post_data, content_type='application/x-www-form-urlencoded')
+
+
     def assertGotSignal(self, signal, flagged, params=IPN_POST_PARAMS):
         # Check the signal was sent. These get lost if they don't reference self.
         self.got_signal = False
@@ -221,7 +237,7 @@ class IPNTest(TestCase):
             self.signal_obj = sender
         signal.connect(handle_signal)
 
-        response = self.client.post("/ipn/", params)
+        response = self.paypal_post(params)
         self.assertEqual(response.status_code, 200)
         ipns = PayPalIPN.objects.all()
         self.assertEqual(len(ipns), 1)
@@ -230,9 +246,12 @@ class IPNTest(TestCase):
 
         self.assertTrue(self.got_signal)
         self.assertEqual(self.signal_obj, ipn_obj)
+        return ipn_obj
 
     def test_correct_ipn(self):
-        self.assertGotSignal(payment_was_successful, False)
+        ipn_obj = self.assertGotSignal(payment_was_successful, False)
+        # Check some encoding issues:
+        self.assertEqual(ipn_obj.first_name, u"J\u00f6rg")
 
     def test_failed_ipn(self):
         PayPalIPN._postback = lambda self: "INVALID"
@@ -241,7 +260,7 @@ class IPNTest(TestCase):
     def assertFlagged(self, updates, flag_info):
         params = IPN_POST_PARAMS.copy()
         params.update(updates)
-        response = self.client.post("/ipn/", params)
+        response = self.paypal_post(params)
         self.assertEqual(response.status_code, 200)
         ipn_obj = PayPalIPN.objects.all()[0]
         self.assertEqual(ipn_obj.flag, True)
@@ -261,15 +280,14 @@ class IPNTest(TestCase):
         update = {"payment_status": ST_PP_CANCELLED}
         params = IPN_POST_PARAMS.copy()
         params.update(update)
-        response = self.client.post("/ipn/", params)
+        response = self.paypal_post(params)
         self.assertEqual(response.status_code, 200)
         ipn_obj = PayPalIPN.objects.all()[0]
         self.assertEqual(ipn_obj.flag, False)
 
-
     def test_duplicate_txn_id(self):
-        self.client.post("/ipn/", IPN_POST_PARAMS)
-        self.client.post("/ipn/", IPN_POST_PARAMS)
+        self.paypal_post(IPN_POST_PARAMS)
+        self.paypal_post(IPN_POST_PARAMS)
         self.assertEqual(len(PayPalIPN.objects.all()), 2)
         ipn_obj = PayPalIPN.objects.order_by('-created_at', '-pk')[0]
         self.assertEqual(ipn_obj.flag, True)
@@ -342,7 +360,7 @@ class IPNTest(TestCase):
             self.signal_obj = sender
         recurring_payment.connect(handle_signal)
 
-        response = self.client.post("/ipn/", params)
+        response = self.paypal_post(params)
         self.assertEqual(response.status_code, 200)
         ipns = PayPalIPN.objects.all()
         self.assertEqual(len(ipns), 1)
