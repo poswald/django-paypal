@@ -30,7 +30,22 @@ class PayPalStandardBase(Model):
     # @@@ Might want to add all these one distant day.
     # FLAG_CODE_CHOICES = (
     # PAYMENT_STATUS_CHOICES = "Canceled_ Reversal Completed Denied Expired Failed Pending Processed Refunded Reversed Voided".split()
-    PAYMENT_STATUS_CHOICES = (ST_PP_ACTIVE, ST_PP_CANCELLED, ST_PP_CLEARED, ST_PP_COMPLETED, ST_PP_DENIED, ST_PP_PAID, ST_PP_PENDING, ST_PP_PROCESSED, ST_PP_REFUSED, ST_PP_REFUNDED, ST_PP_REVERSED, ST_PP_REWARDED, ST_PP_UNCLAIMED, ST_PP_UNCLEARED)
+    PAYMENT_STATUS_CHOICES = (
+        ST_PP_ACTIVE,
+        ST_PP_CANCELLED,
+        ST_PP_CLEARED,
+        ST_PP_COMPLETED,
+        ST_PP_DENIED,
+        ST_PP_PAID,
+        ST_PP_PENDING,
+        ST_PP_PROCESSED,
+        ST_PP_REFUSED,
+        ST_PP_REFUNDED,
+        ST_PP_REVERSED,
+        ST_PP_REWARDED,
+        ST_PP_UNCLAIMED,
+        ST_PP_UNCLEARED,
+    )
     # AUTH_STATUS_CHOICES = "Completed Pending Voided".split()
     # ADDRESS_STATUS_CHOICES = "confirmed unconfirmed".split()
     # PAYER_STATUS_CHOICES = "verified / unverified".split()

@@ -79,25 +79,37 @@ Using PayPal Payments Standard IPN:
 
 1.  Whenever an IPN is processed a signal will be sent with the result of the
     transaction. Connect the signals to actions to perform the needed operations
-    when a successful payment is recieved.
+    when an event occurs.
 
-    There are two signals for basic transactions:
+    Signals for basic transactions:
     - `payment_was_successful`
     - `payment_was_flagged`
+    - `payment_refunded`
 
-    And five signals for subscriptions:
+    Signals for subscriptions:
     - `subscription_cancel` - Sent when a subscription is cancelled.
     - `subscription_eot` - Sent when a subscription expires.
     - `subscription_modify` - Sent when a subscription is modified.
     - `subscription_signup` - Sent when a subscription is created.
     - `subscription_failed` - Sent when a subscription payment fails. Paypal may still retry it.
+    - `subscription_payment` - When a subscription payment is received from a subscription
 
-    Several more exist for recurring payments:
+    Signals for recurring payments:
     - `recurring_create` - Sent when a recurring payment is created.
     - `recurring_payment` - Sent when a payment is received from a recurring payment.
     - `recurring_cancel` - Sent when a recurring payment is cancelled.
     - `recurring_suspend` - Sent when a recurring payment is suspended.
     - `recurring_reactivate` - Sent when a recurring payment is reactivated.
+    - `recurring_skipped`
+    - `recurring_refunded`
+    - `recurring_failed`
+
+    There are two ipn messages that are not well documented by paypal but
+    sometimes get sent. These are recurring ipn messages (they have a Recurring
+    Payment ID), but they have also been seen sent out for subscriptions.
+    - `recurring_payment_outstanding_payment`
+    - `recurring_payment_suspended_due_to_max_failed_payment`
+
 
     Connect to these signals and update your data accordingly. [Django Signals Documentation](http://docs.djangoproject.com/en/dev/topics/signals/).
 
@@ -328,9 +340,20 @@ apps.
             (r'^some/obscure/name/', include('paypal.standard.ipn.urls')),
         )
 
-7. Connect to the provided signals and have them do something useful:
+7. Connect to the provided signals and have them do something useful. There are
+   additional signals defined in the `paypal.pro.models.signals` module. These
+   signals are different from IPN signals in that they are sent the second the
+   payment is failed or succeeds and come with the `item` object passed to
+   PayPalPro rather than an IPN object:
+
     - `payment_was_successful`
     - `payment_was_flagged`
+
+    - `payment_profile_created`
+    - `recurring_cancel`
+    - `recurring_suspend`
+    - `recurring_reactivate`
+
 
 
 8. Profit.
