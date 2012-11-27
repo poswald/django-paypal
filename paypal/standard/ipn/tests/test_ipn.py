@@ -12,7 +12,7 @@ from paypal.standard.ipn.signals import (payment_was_successful,
     payment_was_flagged, recurring_skipped, recurring_failed,
     recurring_create, recurring_payment, recurring_cancel,
     recurring_refunded, payment_refunded, subscription_failed, subscription_eot,
-    subscription_signup, subscription_cancel)
+    subscription_signup, subscription_cancel, subscription_payment)
 
 
 # Parameters are all bytestrings, so we can construct a bytestring
@@ -153,6 +153,39 @@ IPN_SUBSCR_CANCEL_PARAMS = {
     "verify_sign": "",
 }
 
+IPN_SUBSCR_PAYMENT_PARAMS = {
+    "business": u"business@example.com",
+    "charset": u"UTF-8",
+    "custom": u"1,2,3,4",
+    "first_name": u"J\xF6rg",
+    "ipn_track_id": u"a5u81abcd1234",
+    "item_name": u"monthly widgets",
+    "item_number": u"1234",
+    "last_name": u"Smith",
+    "mc_currency": u"JPY",
+    "mc_fee": u"100",
+    "mc_gross": u"2000",
+    "notify_version": u"3.7",
+    "payer_email": u"payer@example.com",
+    "payer_id": "YXNBI1GQZPV6M",
+    "payer_status": "verified",
+    "payment_date": u"22:52:25+Nov+26,+2012+PST",
+    "payment_fee": u"",
+    "payment_gross": u"",
+    "payment_status": u"Completed",
+    "payment_type": u"instant",
+    "protection_eligibility": u"Ineligible",
+    "receiver_email": settings.PAYPAL_RECEIVER_EMAIL,
+    "receiver_id": u"258DLEHY2BDK6",
+    "residence_country": u"US",
+    "subscr_id": u"I-1EM1WEKXTL1G",
+    "transaction_subject": u"Some subject",
+    "txn_id": u"51403485VH153354B",
+    "txn_type": u"subscr_payment",
+    "verify_sign": u"",
+}
+
+
 class IPNTest(TestCase):
     urls = 'paypal.standard.ipn.tests.test_urls'
 
@@ -243,6 +276,8 @@ class IPNTest(TestCase):
         self.assertEqual(len(ipns), 1)
         ipn_obj = ipns[0]
         self.assertEqual(ipn_obj.flag, flagged)
+        self.assertEqual(ipn_obj.txn_id, params.get('txn_id', ''))
+        self.assertEqual(ipn_obj.txn_type, params.get('txn_type', ''))
 
         self.assertTrue(self.got_signal)
         self.assertEqual(self.signal_obj, ipn_obj)
@@ -409,4 +444,8 @@ class IPNTest(TestCase):
     def test_subscr_cancel_ipn(self):
         params = IPN_SUBSCR_CANCEL_PARAMS.copy()
         self.assertGotSignal(subscription_cancel, False, params)
+
+    def test_subscr_payment_ipn(self):
+        params = IPN_SUBSCR_PAYMENT_PARAMS.copy()
+        self.assertGotSignal(subscription_payment, False, params)
 
