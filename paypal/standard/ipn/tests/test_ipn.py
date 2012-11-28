@@ -154,35 +154,35 @@ IPN_SUBSCR_CANCEL_PARAMS = {
 }
 
 IPN_SUBSCR_PAYMENT_PARAMS = {
-    "business": u"business@example.com",
-    "charset": u"UTF-8",
-    "custom": u"1,2,3,4",
-    "first_name": u"J\xF6rg",
-    "ipn_track_id": u"a5u81abcd1234",
-    "item_name": u"monthly widgets",
-    "item_number": u"1234",
-    "last_name": u"Smith",
-    "mc_currency": u"JPY",
-    "mc_fee": u"100",
-    "mc_gross": u"2000",
-    "notify_version": u"3.7",
-    "payer_email": u"payer@example.com",
+    "business": "business@example.com",
+    "charset": "UTF-8",
+    "custom": "1,2,3,4",
+    "first_name": "J\xF6rg",
+    "ipn_track_id": "a5u81abcd1234",
+    "item_name": "monthly widgets",
+    "item_number": "1234",
+    "last_name": "Smith",
+    "mc_currency": "JPY",
+    "mc_fee": "100",
+    "mc_gross": "2000",
+    "notify_version": "3.7",
+    "payer_email": "payer@example.com",
     "payer_id": "YXNBI1GQZPV6M",
     "payer_status": "verified",
-    "payment_date": u"22:52:25+Nov+26,+2012+PST",
-    "payment_fee": u"",
-    "payment_gross": u"",
-    "payment_status": u"Completed",
-    "payment_type": u"instant",
-    "protection_eligibility": u"Ineligible",
+    "payment_date": "22:52:25 Nov 26, 2012 PST",
+    "payment_fee": "",
+    "payment_gross": "",
+    "payment_status": "Completed",
+    "payment_type": "instant",
+    "protection_eligibility": "Ineligible",
     "receiver_email": settings.PAYPAL_RECEIVER_EMAIL,
-    "receiver_id": u"258DLEHY2BDK6",
-    "residence_country": u"US",
-    "subscr_id": u"I-1EM1WEKXTL1G",
-    "transaction_subject": u"Some subject",
-    "txn_id": u"51403485VH153354B",
-    "txn_type": u"subscr_payment",
-    "verify_sign": u"",
+    "receiver_id": "258DLEHY2BDK6",
+    "residence_country": "US",
+    "subscr_id": "I-1EM1WEKXTL1G",
+    "transaction_subject": "Some subject",
+    "txn_id": "51403485VH153354B",
+    "txn_type": "subscr_payment",
+    "verify_sign": "",
 }
 
 
@@ -208,6 +208,7 @@ class IPNTest(TestCase):
         self.recurring_cancel_receivers = recurring_cancel.receivers
         self.recurring_refunded_receivers = recurring_refunded.receivers
 
+        self.subscription_payment_receivers = subscription_payment.receivers
         self.subscription_signup_receivers = subscription_signup.receivers
         self.subscription_failed_receivers = subscription_failed.receivers
         self.subscription_eot_receivers = subscription_eot.receivers
@@ -224,6 +225,7 @@ class IPNTest(TestCase):
         recurring_cancel.receivers = []
         recurring_refunded.receivers = []
 
+        subscription_payment.receivers = []
         subscription_signup.receivers = []
         subscription_failed.receivers = []
         subscription_eot.receivers = []
@@ -244,6 +246,7 @@ class IPNTest(TestCase):
         recurring_payment.receivers = self.recurring_payment_receivers
         recurring_cancel.receivers = self.recurring_cancel_receivers
 
+        subscription_payment.receivers = self.subscription_payment_receivers
         subscription_signup.receivers = self.subscription_signup_receivers
         subscription_failed.receivers = self.subscription_failed_receivers
         subscription_eot.receivers = self.subscription_eot_receivers
@@ -283,15 +286,6 @@ class IPNTest(TestCase):
         self.assertEqual(self.signal_obj, ipn_obj)
         return ipn_obj
 
-    def test_correct_ipn(self):
-        ipn_obj = self.assertGotSignal(payment_was_successful, False)
-        # Check some encoding issues:
-        self.assertEqual(ipn_obj.first_name, u"J\u00f6rg")
-
-    def test_failed_ipn(self):
-        PayPalIPN._postback = lambda self: "INVALID"
-        self.assertGotSignal(payment_was_flagged, True)
-
     def assertFlagged(self, updates, flag_info):
         params = IPN_POST_PARAMS.copy()
         params.update(updates)
@@ -300,6 +294,17 @@ class IPNTest(TestCase):
         ipn_obj = PayPalIPN.objects.all()[0]
         self.assertEqual(ipn_obj.flag, True)
         self.assertEqual(ipn_obj.flag_info, flag_info)
+
+
+
+    def test_correct_ipn(self):
+        ipn_obj = self.assertGotSignal(payment_was_successful, False)
+        # Check some encoding issues:
+        self.assertEqual(ipn_obj.first_name, u"J\u00f6rg")
+
+    def test_failed_ipn(self):
+        PayPalIPN._postback = lambda self: "INVALID"
+        self.assertGotSignal(payment_was_flagged, True)
 
     def test_incorrect_receiver_email(self):
         update = {"receiver_email": "incorrect_email@someotherbusiness.com"}
@@ -373,13 +378,6 @@ class IPNTest(TestCase):
         self.assertGotSignal(recurring_cancel, False, params)
 
     def test_recurring_payment_ipn(self):
-        """
-        The way the code is written in
-        PayPalIPN.send_signals the recurring_payment
-        will never be sent because the paypal ipn
-        contains a txn_id, if this test fails you
-        might break some compatibility
-        """
         update = {
             "recurring_payment_id": "BN5JZ2V7MLEV4",
             "txn_type": "recurring_payment",
@@ -387,19 +385,7 @@ class IPNTest(TestCase):
         params = IPN_POST_PARAMS.copy()
         params.update(update)
 
-        self.got_signal = False
-        self.signal_obj = None
-
-        def handle_signal(sender, **kwargs):
-            self.got_signal = True
-            self.signal_obj = sender
-        recurring_payment.connect(handle_signal)
-
-        response = self.paypal_post(params)
-        self.assertEqual(response.status_code, 200)
-        ipns = PayPalIPN.objects.all()
-        self.assertEqual(len(ipns), 1)
-        self.assertFalse(self.got_signal)
+        self.assertGotSignal(recurring_payment, False, params)
 
 
     def test_refund_for_recurring_payment(self):

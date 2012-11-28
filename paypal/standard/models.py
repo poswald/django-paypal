@@ -214,8 +214,6 @@ class PayPalStandardBase(Model):
     def is_transaction(self):
         return len(self.txn_id) > 0
 
-    def is_recurring(self):
-        return len(self.recurring_payment_id) > 0
 
     def is_subscription(self):
         return len(self.subscr_id) > 0
@@ -232,16 +230,23 @@ class PayPalStandardBase(Model):
     def is_subscription_signup(self):
         return self.txn_type == "subscr_signup"
 
+    def is_subscription_payment(self):
+        return self.txn_type == "subscr_payment"
+
     def is_subscription_failed(self):
         # Note this just means the subscription payment failed. Paypal may retry.
         return self.txn_type == "subscr_failed"
+
+
+    def is_recurring(self):
+        return len(self.recurring_payment_id) > 0
 
     def is_recurring_create(self):
         return self.txn_type == "recurring_payment_profile_created"
 
     def is_recurring_payment(self):
         return self.txn_type == "recurring_payment"
-    
+
     def is_recurring_cancel(self):
         return self.txn_type == "recurring_payment_profile_cancel"
 
