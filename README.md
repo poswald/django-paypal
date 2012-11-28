@@ -1,6 +1,11 @@
 Django PayPal
 =============
 
+Note: Due to changes in the way signals are sent out, this branch may not be backwards
+compatible with either `dcramer/django-paypal` or `johnboxall/django-paypal`
+versions. (see the signals section below)
+
+Please report any issues to the repo of the version you are using.
 
 About
 -----
@@ -19,9 +24,21 @@ There is currently an active discussion over the handling of some of the finer p
 Using PayPal Payments Standard IPN:
 -------------------------------
 
-1. Download the code from GitHub:
+1. Download or install the code from GitHub:
 
-        git clone git://github.com/johnboxall/django-paypal.git paypal
+        git clone git://github.com/poswald/django-paypal.git paypal
+
+   If you are building with pip/virtualenv you may use that to install using an editable version
+   directly from github. This is the reccomended way of using the project:
+
+        pip install -e git+git://github.com/poswald/django-paypal.git@master#egg=django-paypal
+
+   you can also add a line like the following into your requirements.txt:
+
+        -e git+git://github.com/poswald/django-paypal.git@master#egg=django-paypal
+
+   notice that you can specify a branch or a specific commit if you want.
+
 
 1. Edit `settings.py` and add  `paypal.standard.ipn` to your `INSTALLED_APPS`
    and `PAYPAL_RECEIVER_EMAIL`:
@@ -106,9 +123,20 @@ Using PayPal Payments Standard IPN:
 
     There are two ipn messages that are not well documented by paypal but
     sometimes get sent. These are recurring ipn messages (they have a Recurring
-    Payment ID), but they have also been seen sent out for subscriptions.
+    Payment ID), but they have also been seen sent out for subscriptions. Signals
+    when these come in is not yet supported:
     - `recurring_payment_outstanding_payment`
     - `recurring_payment_suspended_due_to_max_failed_payment`
+
+
+    Note: previous versions of this project would send out the
+    `payment_was_successful` signal for any ipn with a `txn_id` set. This means
+    that a one-off purchase, a recurring payment and a subscription payment
+    would all fire the same signal. Payments for subscriptions have both
+    the `txn_id` and the `subscr_id` set. This version of the project will only
+    send out `payment_was_successful` for purchases, not subscription or
+    recurring payments. You can use `recurring_payment` or `subscription_payment`
+    for those.
 
 
     Connect to these signals and update your data accordingly. [Django Signals Documentation](http://docs.djangoproject.com/en/dev/topics/signals/).
