@@ -53,6 +53,8 @@ class PayPalIPN(PayPalStandardBase):
                 subscription_cancel.send(sender=self)
             elif self.is_subscription_signup():
                 subscription_signup.send(sender=self)
+            elif self.is_subscription_payment():
+                subscription_payment.send(sender=self)
             elif self.is_subscription_end_of_term():
                 subscription_eot.send(sender=self)
             elif self.is_subscription_modified():
