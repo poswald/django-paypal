@@ -35,7 +35,8 @@ def ipn(request, item_check_callable=None):
         data = None
     else:
         try:
-            data = QueryDict(request.raw_post_data, encoding=encoding)
+            # get a mutable copy of the data in the correct encoding
+            data = QueryDict(request.raw_post_data, encoding=encoding).copy()
         except LookupError:
             data = None
             flag = "Invalid form - invalid charset"
